@@ -82,7 +82,7 @@ float LinuxParser::MemoryUtilization() {
       std::istringstream line3stream(line);
       line3stream >> name >> mem_free;
     }
-    mem_utilization = ((mem_total - mem_free) / mem_total * 100) / 100;
+    mem_utilization = ((mem_total - mem_free) / mem_total * 100.0) / 100.0;
     return mem_utilization;
 }
 
@@ -113,8 +113,22 @@ long LinuxParser::ActiveJiffies() { return 0; }
 // TODO: Read and return the number of idle jiffies for the system
 long LinuxParser::IdleJiffies() { return 0; }
 
-// TODO: Read and return CPU utilization
-vector<string> LinuxParser::CpuUtilization() { return {}; }
+
+vector<float> LinuxParser::CpuUtilization() {
+  vector<float> times{};
+  float time;
+  string line, cpu;
+  std::ifstream stream(kProcDirectory + kStatFilename);
+  if (stream.is_open()) {
+    std::getline(stream, line);
+    std::istringstream line_stream(line);
+    line_stream >> cpu;
+    while(line_stream >> time){
+      times.push_back(time);
+    }
+  }
+  return times;
+}
 
 
 int LinuxParser::TotalProcesses() {
