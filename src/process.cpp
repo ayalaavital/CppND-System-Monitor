@@ -8,6 +8,8 @@
 #include "process.h"
 #include "linux_parser.h"
 
+#define GB_TO_MB 0.001
+
 using std::string;
 using std::to_string;
 using std::vector;
@@ -30,7 +32,10 @@ string Process::Command() {
 }
 
 // Return this process's memory utilization
-string Process::Ram() const { return LinuxParser::Ram(pid_); }
+string Process::Ram() const {
+  int ram = stoi(LinuxParser::Ram(pid_)) * GB_TO_MB;
+  return to_string(ram);
+}
 
 // Return the user (name) that generated this process
 string Process::User() {
