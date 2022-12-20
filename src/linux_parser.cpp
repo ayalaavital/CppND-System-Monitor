@@ -112,68 +112,20 @@ long LinuxParser::ActiveJiffies(int pid) {
   long up_time = UpTime();
   auto hz = sysconf(_SC_CLK_TCK);
 
-  double utime, stime, cutime, cstime, starttime, total_time, seconds;
-  long ld_var, cpu_usage;
-  unsigned int u_var;
-  unsigned long lu_var;
-  unsigned long long llu_var;
-  char c_var;
-  int i_var;
-  string line, s_var;
+  vector<string> stat_parsed = StatParser(pid);
 
-  int idx = 1;
-  std::ifstream filestream(kProcDirectory + to_string(pid) + kStatFilename);
-  if (filestream.is_open()) {
-    while (std::getline(filestream, line)) {
-      std::istringstream line_stream(line);
-      while(idx <= 23){
-        if (idx == 1 || (4 <= idx && idx <= 8)){
-          line_stream >> i_var;
-        } else if (idx == 2){
-          line_stream >> s_var;
-        } else if (idx == 3){
-          line_stream >> c_var;
-        } else if (idx == 9){
-          line_stream >> u_var;
-        } else if ((10 <= idx && idx <= 15) || idx == 23){
-          line_stream >> lu_var;
-        } else if (16 <= idx && idx <= 21){
-          line_stream >> ld_var;
-        } else if (idx == 22){
-          line_stream >> llu_var;
-        }
+  long utime= stol(stat_parsed[ProcessStat::utime_]);
+  long stime= stol(stat_parsed[ProcessStat::stime_]);
 
-        switch(idx){
-          case 14:
-            utime = lu_var;
-            break;
-          case 15:
-            stime = lu_var;
-            break;
-          case 16:
-            cutime = ld_var;
-            break;
-          case 17:
-            cstime = ld_var;
-            break;
-          case 22:
-            starttime = llu_var;
-            break;
-          default:
-            break;
-        }
+  long cutime = stol(stat_parsed[ProcessStat::cutime_]);
+  long cstime = stol(stat_parsed[ProcessStat::cstime_]);
 
-        idx += 1;
-        if (idx == 23) {
-          total_time = utime + stime + cutime + cstime;
-          seconds = up_time - (starttime / hz);
-          cpu_usage = 100 * ((total_time / hz) / seconds);
+  long starttime = stol(stat_parsed[ProcessStat::starttime_]);
 
-          return cpu_usage;
-        }
-      }
-    }
-  }
+  double total_time = utime + stime + cutime + cstime;
+  double seconds = up_time - (starttime / hz);
+  long cpu_usage = 100 * ((total_time / hz) / seconds);
+
   return cpu_usage;
 }
 
@@ -265,7 +217,7 @@ string LinuxParser::Command(int pid) {
 // Read and return the memory used by a process
 string LinuxParser::Ram(int pid) {
 
-  string line, mum_usage;
+  string line, mem_usage;
   string name = " ";
   std::ifstream filestream(kProcDirectory + to_string(pid) + kStatusFilename);
   if (filestream.is_open()) {
@@ -273,12 +225,12 @@ string LinuxParser::Ram(int pid) {
       std::istringstream line_stream(line);
       line_stream >> name;
       if (name == "VmSize:") {
-        line_stream >> mum_usage;
+        line_stream >> mem_usage;
         break;
       }
     }
   }
-  return mum_usage;
+  return mem_usage;
 }
 
 // Read and return the user ID associated with a process
@@ -322,20 +274,23 @@ string LinuxParser::User(int pid) {
 long LinuxParser::UpTime(int pid) {
 
   auto hz = sysconf(_SC_CLK_TCK);
-  long time;
-  string line;
-  int idx = 1;
+  vector<string> stat_parsed = StatParser(pid);
+  long time = stol(stat_parsed[ProcessStat::starttime_]) / hz;
+  return time;
+}
+
+
+vector<string> LinuxParser::StatParser(int pid){
+
+  vector<string> stat_parsed{};
+  string line, val;
   std::ifstream filestream(kProcDirectory + to_string(pid) + kStatFilename);
   if (filestream.is_open()) {
-    while (std::getline(filestream, line)) {
-      std::istringstream line_stream(line);
-      while(line_stream >> time){
-        if (idx == 22) {
-          return time / hz;
-        }
-        idx += 1;
-      }
+    std::getline(filestream, line);
+    std::istringstream line_stream(line);
+    while(line_stream >> val) {
+      stat_parsed.emplace_back(val);
     }
   }
-  return time;
+  return stat_parsed;
 }

@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <ctime>
+#include <chrono>
 
 #include "linux_parser.h"
 #include "process.h"
@@ -23,8 +24,22 @@ vector<Process>& System::Processes() {
 
   vector<int> pids(LinuxParser::Pids());
   set<int> old_pids;
+  vector<int>::iterator it;
+  vector<int> to_erase{};
+
   for (Process& process: processes_){
-    old_pids.insert(process.Pid());
+    int pid = process.Pid();
+    it = find(pids.begin(), pids.end(), pid);
+    if (it == pids.end()){   // process terminate
+      to_erase.emplace_back(pid);
+    } else {
+      old_pids.insert(pid);
+    }
+  }
+
+  for (int pid: to_erase) {
+    auto iter = std::find_if(processes_.begin(), processes_.end(), [pid](auto process) { return process.Pid() == pid; });
+    processes_.erase(iter);
   }
 
   for(auto pid: pids){
@@ -32,6 +47,7 @@ vector<Process>& System::Processes() {
       processes_.emplace_back(pid);
     }
   }
+
   std::sort(processes_.begin(), processes_.end());
   return processes_;
 }
@@ -69,13 +85,18 @@ int System::TotalProcesses() {
 
 
 long int System::UpTime() {
-  std::time_t t = std::time(nullptr);
-  std::localtime(&t);
+
+  using namespace std::chrono;
+  auto now = system_clock::now();
+  auto now_s = time_point_cast<seconds>(now);
+  auto value = now_s.time_since_epoch();
+  long duration = value.count();
+
   if (up_time_start_ < 0){
     up_time_start_ = LinuxParser::UpTime();
-    up_time_update_t_ = t;
+    up_time_update_t_ = duration;
     return up_time_start_;
   }
-  long int up_time = up_time_start_ + t - up_time_update_t_;
+  long int up_time = up_time_start_ + duration - up_time_update_t_;
   return up_time;
 }

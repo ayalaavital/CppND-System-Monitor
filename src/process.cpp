@@ -3,12 +3,13 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include <ctime>
+#include <chrono>
 
 #include "process.h"
 #include "linux_parser.h"
 
 #define GB_TO_MB 0.001
+#define RAM_DEFAULT 0
 
 using std::string;
 using std::to_string;
@@ -33,8 +34,12 @@ string Process::Command() {
 
 // Return this process's memory utilization
 string Process::Ram() const {
-  int ram = stoi(LinuxParser::Ram(pid_)) * GB_TO_MB;
-  return to_string(ram);
+  string s_ram = LinuxParser::Ram(pid_);
+  int i_ram = RAM_DEFAULT;
+  if (!s_ram.empty() && std::all_of(s_ram.begin(), s_ram.end(), isdigit)) {
+    i_ram = stoi(s_ram) * GB_TO_MB;
+  }
+  return to_string(i_ram);
 }
 
 // Return the user (name) that generated this process
@@ -48,14 +53,19 @@ string Process::User() {
 
 // Return the age of this process (in seconds)
 long int Process::UpTime() {
-  std::time_t t = std::time(nullptr);
-  std::localtime(&t);
+
+  using namespace std::chrono;
+  auto now = system_clock::now();
+  auto now_s = time_point_cast<seconds>(now);
+  auto value = now_s.time_since_epoch();
+  long duration = value.count();
+
   if (up_time_start_ < 0){
     up_time_start_ = LinuxParser::UpTime(pid_);
-    up_time_update_t_ = t;
+    up_time_update_t_ = duration;
     return up_time_start_;
   }
-  long int up_time = up_time_start_ + t - up_time_update_t_;
+  long int up_time = up_time_start_ + duration - up_time_update_t_;
   return up_time;
 }
 
