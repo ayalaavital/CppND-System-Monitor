@@ -114,37 +114,47 @@ long LinuxParser::ActiveJiffies(int pid) {
 
   vector<string> stat_parsed = StatParser(pid);
 
-  long utime= stol(stat_parsed[ProcessStat::utime_]);
-  long stime= stol(stat_parsed[ProcessStat::stime_]);
+  if (!stat_parsed.empty()){
 
-  long cutime = stol(stat_parsed[ProcessStat::cutime_]);
-  long cstime = stol(stat_parsed[ProcessStat::cstime_]);
+    long utime= stol(stat_parsed[ProcessStat::utime_]);
+    long stime= stol(stat_parsed[ProcessStat::stime_]);
 
-  long starttime = stol(stat_parsed[ProcessStat::starttime_]);
+    long cutime = stol(stat_parsed[ProcessStat::cutime_]);
+    long cstime = stol(stat_parsed[ProcessStat::cstime_]);
 
-  double total_time = utime + stime + cutime + cstime;
-  double seconds = up_time - (starttime / hz);
-  long cpu_usage = 100 * ((total_time / hz) / seconds);
+    long starttime = stol(stat_parsed[ProcessStat::starttime_]);
 
-  return cpu_usage;
+    double total_time = utime + stime + cutime + cstime;
+    double seconds = up_time - (starttime / hz);
+    long cpu_usage = 100 * ((total_time / hz) / seconds);
+
+    return cpu_usage;
+  }
+  return 0;
 }
 
 // Read and return the number of active jiffies for the system
 long LinuxParser::ActiveJiffies() {
   vector<string> jiffies = CpuUtilization();
-  return stol(jiffies[CPUStates::kUser_]) +
-         stol(jiffies[CPUStates::kNice_]) +
-         stol(jiffies[CPUStates::kSystem_]) +
-         stol(jiffies[CPUStates::kIOwait_]) +
-         stol(jiffies[CPUStates::kIRQ_]) +
-         stol(jiffies[CPUStates::kSoftIRQ_]) +
-         stol(jiffies[CPUStates::kSteal_]);
+  if (!jiffies.empty()) {
+    return stol(jiffies[CPUStates::kUser_]) +
+           stol(jiffies[CPUStates::kNice_]) +
+           stol(jiffies[CPUStates::kSystem_]) +
+           stol(jiffies[CPUStates::kIOwait_]) +
+           stol(jiffies[CPUStates::kIRQ_]) +
+           stol(jiffies[CPUStates::kSoftIRQ_]) +
+           stol(jiffies[CPUStates::kSteal_]);
+  }
+  return 0;
 }
 
 // Read and return the number of idle jiffies for the system
 long LinuxParser::IdleJiffies() {
   vector<string> jiffies = CpuUtilization();
-  return stol(jiffies[CPUStates::kIdle_]);
+  if (!jiffies.empty()) {
+    return stol(jiffies[CPUStates::kIdle_]);
+  }
+  return 0;
 }
 
 
@@ -275,8 +285,11 @@ long LinuxParser::UpTime(int pid) {
 
   auto hz = sysconf(_SC_CLK_TCK);
   vector<string> stat_parsed = StatParser(pid);
-  long time = stol(stat_parsed[ProcessStat::starttime_]) / hz;
-  return time;
+  if (!stat_parsed.empty()){
+    long time = stol(stat_parsed[ProcessStat::starttime_]) / hz;
+    return time;
+  }
+  return 0;
 }
 
 
